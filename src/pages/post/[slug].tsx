@@ -3,6 +3,8 @@ import Header from '../../components/Header';
 import { FiCalendar, FiUser, FiClock } from 'react-icons/fi';
 import Prismic from '@prismicio/client';
 import { useRouter } from 'next/router';
+import { format } from'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
 
 import { getPrismicClient } from '../../services/prismic';
 
@@ -10,10 +12,14 @@ import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
 import { RichText } from 'prismic-dom';
 import { dateFormatter } from '../../utils/dateFormatter';
+import { Comments } from '../../components/Comments';
+import { useEffect, useState } from 'react';
+import { PostNavigation } from '../../components/PostNavigation';
 
 interface Post {
   uid:string;
   first_publication_date: string | null;
+  last_publication_date: string | null;
   data: {
     title: string;
     banner: {
@@ -33,7 +39,26 @@ interface PostProps {
   post: Post;
 }
 
+interface PostInfo {
+  uid: string;
+  data: {
+    title: string
+  };
+}
+
 export default function Post({ post }: PostProps) {
+  const [nextPost, setNextPost] = useState<PostInfo>();
+  const [previousPost, setPreviousPost] = useState<PostInfo>();
+
+  useEffect(() => {
+    fetch('https://space-travelingg.cdn.prismic.io/api/v2/documents/search?ref=YKBXnhIAACQAwW0W#format=json')
+    .then(response => response.json())
+    .then(data => {
+      const index = data.results.findIndex(result => result.uid === post?.uid)
+      setPreviousPost(data.results[index - 1]);
+      setNextPost(data.results[index + 1]);
+    });
+  },[post]);
 
   const router = useRouter();
 
@@ -45,33 +70,55 @@ export default function Post({ post }: PostProps) {
     <>
       <Header />
       <main className={styles.container}>
-        <img src={post.data.banner.url} alt="thumbnail"/>
-        <div className={styles.content}>
-          <h1>{post.data.title}</h1>
-          <div className={styles.postInfo}>
-            <span>
-              <FiCalendar/>
-              {dateFormatter(post.first_publication_date)}
-            </span>
-            <span>
-              <FiUser/>
-             {post.data.author}
-            </span>
-            <span>
-              <FiClock/>
-              4 min
-            </span>
+        <div className={styles.post}>
+          <img src={post.data.banner.url} alt="thumbnail"/>
+          <div className={styles.content}>
+            <h1>{post.data.title}</h1>
+            <div className={styles.postInfo}>
+              <div>
+                <span>
+                  <FiCalendar/>
+                  {dateFormatter(post.first_publication_date)}
+                </span>
+                <span>
+                  <FiUser/>
+                {post.data.author}
+                </span>
+                <span>
+                  <FiClock/>
+                  4 min
+                </span>
+              </div>
+              <span>
+                <i>
+                  {
+                    format(new Date(post.last_publication_date),
+                      "'* editado em 'dd MMM yyyy', às 'hh:mm'",
+                      {
+                        locale: ptBR,
+                      }
+                    )
+
+                  }
+                </i>
+              </span>
+            </div>
+            
+            {
+              post.data.content.map(content => (
+                <article key={post.uid}>
+                  <h2>{content.heading}</h2>
+                  <div dangerouslySetInnerHTML={{__html: String(RichText.asHtml(content.body))}}/>
+                </article>
+              ))
+            }
           </div>
-          
-          {
-            post.data.content.map(content => (
-              <article key={post.uid}>
-                <h2>{content.heading}</h2>
-                <div dangerouslySetInnerHTML={{__html: String(RichText.asHtml(content.body))}}/>
-             </article>
-            ))
-          }
         </div>
+        <PostNavigation  
+          previousPost={previousPost}
+          nextPost={nextPost}
+        />
+        <Comments post_uid={post.uid}/>
       </main>
     </>
   )
@@ -108,9 +155,12 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 
   const response = await prismic.getByUID('post', String(slug), {});
 
+  console.log('response',response);
+
   const post = {
     uid: response.uid,
     first_publication_date: response.first_publication_date,
+    last_publication_date: response.last_publication_date,
     data: {
       title: response.data.title,
       subtitle:response.data.subtitle,
