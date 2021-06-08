@@ -1,0 +1,39 @@
+.container {
+  display: flex;
+  justify-content: space-between;
+  max-width: 721px;
+  width: 100%;
+  padding: 0 1.25rem;
+  margin: 50px auto 80px;
+
+  a {
+    display: flex;
+    flex-direction: column;
+    transition: filter 0.2s;
+    span {
+      display: block;
+       color: var(--title);
+       font-size: 1.125rem;
+       line-height: 1.375rem;
+       font-weight: 400;
+       margin-bottom: 0.5rem;
+    }
+    p {
+      color: var(--highlight);
+      font-weight: 600;
+      line-height: 1.25rem;
+    }
+    
+    &:hover {
+      filter: brightness(0.8);
+    }
+
+    &.next {
+      align-self: flex-end;
+     p {
+       text-align: end;
+     }
+    }
+  }
+  
+}
